@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import { useAuthStore } from "../store/auth";
 
@@ -9,6 +9,7 @@ const route = useRoute();
 const router = useRouter();
 
 const productId = ref(route.params.productId);
+const product = ref(null);
 
 /**
  * @param {number|string|Date|VarDate} date
@@ -17,6 +18,33 @@ function formatDate(date) {
   const options = { year: "numeric", month: "long", day: "numeric" };
   return new Date(date).toLocaleDateString("fr-FR", options);
 }
+
+async function fetchProduct() {
+  const response = await fetch(`http://localhost:3000/api/products/${productId.value}`);
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
+  }
+  product.value = await response.json();
+}
+
+function countdown(){
+  if (!product.value) {
+    return '';
+  }
+  const endDate = new Date(product.value.endDate);
+  const now = new Date();
+  const diff = endDate - now;
+  if (diff <= 0) {
+    return 'Terminée';
+  }
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return `${days} jours, ${hours} heures et ${minutes} minutes`;
+
+}
+
+onMounted(fetchProduct);
 </script>
 
 <template>
@@ -45,7 +73,7 @@ function formatDate(date) {
           </div>
           <div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted" data-test-countdown>
-              Temps restant : {{ countdown }}
+              Temps restant : {{ countdown() || 'Chargement...'}}
             </h6>
           </div>
         </div>
@@ -56,7 +84,8 @@ function formatDate(date) {
         <div class="row">
           <div class="col-lg-6">
             <h1 class="mb-3" data-test-product-name>
-              Appareil photo argentique
+              {{ product?.name || 'Chargement...' }}
+              
             </h1>
           </div>
           <div class="col-lg-6 text-end">
@@ -76,8 +105,7 @@ function formatDate(date) {
 
         <h2 class="mb-3">Description</h2>
         <p data-test-product-description>
-          Appareil photo argentique classique, parfait pour les amateurs de
-          photographie
+          {{product?.description || 'Chargement...'}}
         </p>
 
         <h2 class="mb-3">Informations sur l'enchère</h2>
@@ -90,7 +118,7 @@ function formatDate(date) {
               :to="{ name: 'User', params: { userId: 'TODO' } }"
               data-test-product-seller
             >
-              alice
+              {{product?.seller.username || 'Chargement...'}}
             </router-link>
           </li>
         </ul>
@@ -106,17 +134,17 @@ function formatDate(date) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="i in 10" :key="i" data-test-bid>
+            <tr v-for="bid in product?.bids" :key="bid" data-test-bid>
               <td>
                 <router-link
                   :to="{ name: 'User', params: { userId: 'TODO' } }"
                   data-test-bid-bidder
                 >
-                  charly
+                  {{bid.bidder.username}}
                 </router-link>
               </td>
-              <td data-test-bid-price>43 €</td>
-              <td data-test-bid-date>22 mars 2026</td>
+              <td data-test-bid-price>{{bid.price}}€</td>
+              <td data-test-bid-date>{{bid.date}}</td>
               <td>
                 <button class="btn btn-danger btn-sm" data-test-delete-bid>
                   Supprimer

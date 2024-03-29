@@ -30,7 +30,26 @@ router.get('/api/products', async (req, res) => {
 router.get('/api/products/:productId', async (req, res) => {
   try {
     const productId = req.params.productId;
-    const product = await Product.findByPk(productId);
+    const product = await Product.findByPk(productId, {
+      include: [
+        {
+          model: Bid,
+          as: 'bids',
+          include: [
+            {
+              model: User,
+              as: 'bidder',
+              attributes: ['username'],
+            },
+          ],
+        },
+        {
+          model: User,
+          as: 'seller',
+          attributes: ['id', 'username'],
+        },
+      ],
+    });
     if (product) {
       res.status(200).json(product);
     } else {
