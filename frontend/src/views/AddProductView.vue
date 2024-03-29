@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { ref, reactive, watch } from 'vue';
 import { useAuthStore } from "../store/auth";
 import { useRouter } from "vue-router";
-import { ref } from "vue";
 
 const { isAuthenticated, token } = useAuthStore();
 const router = useRouter();
@@ -10,19 +10,81 @@ if (!isAuthenticated.value) {
   router.push({ name: "Login" });
 }
 
-// router.push({ name: "Product", params: { productId: 'TODO } });
+const form = reactive({
+  name: '',
+  description: '',
+  category: '',
+  originalPrice: 0,
+  pictureUrl: '',
+  endDate: '',
+});
+
+const isSubmitting = ref(false);
+const showError = ref(false);
+const errorMessage = ref('');
+
+const validateForm = () => {
+  console.log(form.name);
+  console.log(form.description);
+  console.log(form.category);
+  console.log(form.originalPrice);
+  console.log(form.pictureUrl);
+  console.log(form.endDate);
+  if (!form.name || !form.description || !form.category || form.originalPrice <= 0 || !form.pictureUrl || !form.endDate) {
+    
+    errorMessage.value = 'All fields are required and must be valid.';
+    showError.value = true;
+    return false;
+  }
+  showError.value = false;
+  return true;
+};
+
+const addProduct = async () => {
+  if (!validateForm()) return;
+
+  isSubmitting.value = true;
+  const requestOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token.value}`
+    },
+    body: JSON.stringify(form)
+  };
+
+  try {
+    const response = await fetch('/api/products', requestOptions);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "An error occurred while adding the product.");
+    }
+    isSubmitting.value = false;
+    router.push({ name: "Product", params: { productId: data.id } });
+  } catch (error) {
+  const message = (error instanceof Error) ? error.message : 'An unexpected error occurred.';
+  errorMessage.value = message;
+  showError.value = true;
+  isSubmitting.value = false;
+  }
+};
+
+watch(form, () => {
+  if (showError.value) {
+    showError.value = false;
+  }
+});
 </script>
 
 <template>
   <h1 class="text-center">Ajouter un produit</h1>
-
   <div class="row justify-content-center">
     <div class="col-md-6">
-      <form>
-        <div class="alert alert-danger mt-4" role="alert" data-test-error>
-          Une erreur s'est produite
+      <form @submit.prevent="addProduct">
+        <div v-if="showError" class="alert alert-danger mt-4" role="alert">
+          {{ errorMessage }}
         </div>
-
         <div class="mb-3">
           <label for="product-name" class="form-label"> Nom du produit </label>
           <input
@@ -107,19 +169,9 @@ if (!isAuthenticated.value) {
         </div>
 
         <div class="d-grid gap-2">
-          <button
-            type="submit"
-            class="btn btn-primary"
-            disabled
-            data-test-submit
-          >
+          <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
             Ajouter le produit
-            <span
-              data-test-spinner
-              class="spinner-border spinner-border-sm"
-              role="status"
-              aria-hidden="true"
-            ></span>
+            <span v-if="isSubmitting" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
           </button>
         </div>
       </form>
