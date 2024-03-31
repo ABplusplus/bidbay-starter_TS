@@ -39,7 +39,7 @@ router.get('/api/products/:productId', async (req, res) => {
             {
               model: User,
               as: 'bidder',
-              attributes: ['username'],
+              attributes: ['id','username'],
             },
           ],
         },

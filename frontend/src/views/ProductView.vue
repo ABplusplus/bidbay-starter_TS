@@ -10,12 +10,18 @@ const router = useRouter();
 
 const productId = ref(route.params.productId);
 const product = ref(null);
+const bidAmount = ref(null);
 
 /**
  * @param {number|string|Date|VarDate} date
  */
 function formatDate(date) {
   const options = { year: "numeric", month: "long", day: "numeric" };
+  return new Date(date).toLocaleDateString("fr-FR", options);
+}
+
+function formatDateHourMinute(date) {
+  const options = { hour: "numeric", minute: "numeric" };
   return new Date(date).toLocaleDateString("fr-FR", options);
 }
 
@@ -44,6 +50,46 @@ function countdown(){
 
 }
 
+const isBidValid = computed(() => {
+  if(product.value?.bids && product.value?.bids.length > 0){
+    return bidAmount.value > Math.max(...product.value?.bids.map(bid => bid.price));
+  }else{
+    return bidAmount.value >= product.value?.originalPrice;
+  }
+
+  
+});
+
+async function submitBid() {
+  console.log('submitBid was called'); 
+
+  if (!isBidValid.value) {
+    return;
+  }
+  const response = await fetch(`http://localhost:3000/api/products/${productId.value}/bids`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token.value}`,
+    },
+    body: JSON.stringify({
+      price: bidAmount.value,
+      bidderId: userData.value.id,
+    }),
+  });
+  if (response.ok) {
+    // The bid was successfully created
+    // Reload the product
+    
+    await fetchProduct();
+  } else {
+    // There was an error
+    // Handle the error
+  }
+}
+
+
+
 onMounted(fetchProduct);
 </script>
 
@@ -62,7 +108,7 @@ onMounted(fetchProduct);
       <!-- Colonne de gauche : image et compte à rebours -->
       <div class="col-lg-4">
         <img
-          src="https://picsum.photos/id/250/512/512"
+          :src="product?.pictureUrl || 'https://via.placeholder.com/300'"
           alt=""
           class="img-fluid rounded mb-3"
           data-test-product-picture
@@ -93,12 +139,17 @@ onMounted(fetchProduct);
               :to="{ name: 'ProductEdition', params: { productId: 'TODO' } }"
               class="btn btn-primary"
               data-test-edit-product
+              v-if="isAdmin || (isAuthenticated && product?.seller.id === userData.id)"
             >
               Editer
             </RouterLink>
             &nbsp;
-            <button class="btn btn-danger" data-test-delete-product>
+            <button class="btn btn-danger" data-test-delete-product
+            v-if="isAdmin || (isAuthenticated && product?.seller.id === userData.id)"
+
+            >
               Supprimer
+              
             </button>
           </div>
         </div>
@@ -110,8 +161,8 @@ onMounted(fetchProduct);
 
         <h2 class="mb-3">Informations sur l'enchère</h2>
         <ul>
-          <li data-test-product-price>Prix de départ : 17 €</li>
-          <li data-test-product-end-date>Date de fin : 20 juin 2026</li>
+          <li data-test-product-price>Prix de départ : {{product?.originalPrice || "Chargement .."}} €</li>
+          <li data-test-product-end-date>Date de fin : {{formatDateHourMinute(product?.endDate)}}</li>
           <li>
             Vendeur :
             <router-link
@@ -144,34 +195,41 @@ onMounted(fetchProduct);
                 </router-link>
               </td>
               <td data-test-bid-price>{{bid.price}}€</td>
-              <td data-test-bid-date>{{bid.date}}</td>
+              <td data-test-bid-date>{{ formatDateHourMinute(bid.date)}}</td>
               <td>
-                <button class="btn btn-danger btn-sm" data-test-delete-bid>
+                <button class="btn btn-danger btn-sm" data-test-delete-bid
+                v-if="isAdmin"
+                >
                   Supprimer
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
-        <p data-test-no-bids>Aucune offre pour le moment</p>
+        <p data-test-no-bids v-if="!product?.bids || product?.bids.length === 0">Aucune offre pour le moment</p>
 
-        <form data-test-bid-form>
+        <form data-test-bid-form
+        v-if="isAuthenticated && product?.seller.id !== userData.id && countdown() !== 'Terminée'"
+        @submit.prevent="submitBid">
+
           <div class="form-group">
             <label for="bidAmount">Votre offre :</label>
             <input
               type="number"
               class="form-control"
               id="bidAmount"
+              v-model.number="bidAmount"
               data-test-bid-form-price
+
             />
             <small class="form-text text-muted">
-              Le montant doit être supérieur à 10 €.
+                Le montant doit être supérieur à {{ product?.bids && product?.bids.length > 0 ? Math.max(...product?.bids.map(bid => bid.price)) : product?.originalPrice || 0 }} €.
             </small>
           </div>
           <button
             type="submit"
             class="btn btn-primary"
-            disabled
+            :disabled="!isBidValid"
             data-test-submit-bid
           >
             Enchérir
