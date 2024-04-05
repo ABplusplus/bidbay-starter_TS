@@ -1,4 +1,5 @@
 <script>
+
 export default {
   data() {
     return {
@@ -32,10 +33,18 @@ export default {
 
       getLastBid(product) {
     if (product.bids && product.bids.length > 0) {
-      return product.bids[0].price;
+      
+          const sortedBids = product.bids.sort((a, b) => b.price - a.price);
+          return sortedBids[0].price;
+       
     }
     return product.originalPrice; 
   },
+
+   formatDateHourMinute(date) {
+  const options = { hour: "numeric", minute: "numeric" };
+  return new Date(date).toLocaleDateString("fr-FR", options);
+},
 
     fetchProducts() {
       fetch('http://localhost:3000/api/products')
@@ -154,7 +163,7 @@ export default {
               </RouterLink>
             </p>
             <p class="card-text" data-test-product-date>
-              En cours jusqu'au {{ product.endDate }}
+              {{ new Date(product.endDate) > new Date() ? 'Fin de l\'enchère le ' + formatDateHourMinute(product.endDate) : 'Enchère terminée'}}
             </p>
 
             <p class="card-text" data-test-product-price>Prix de Base : {{ product.originalPrice }} €</p>
