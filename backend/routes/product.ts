@@ -1,9 +1,17 @@
-import express from 'express'
+import express , {Request, Response} from 'express'
 import { Product, Bid, User } from '../orm/index.js'
 import authMiddleware from '../middlewares/auth.js'
 import { getDetails } from '../validators/index.js'
+import { userInfo } from 'os'
+import { Token } from '../types/types'; // Typage pour les données utilisateur dans le token
+import { response } from 'express'
+
+
+
 
 const router = express.Router()
+
+
 
 router.get('/api/products', async (req, res) => {
   try {
@@ -102,11 +110,25 @@ router.put('/api/products/:productId', async (req, res) => {
   }
 });
 
-router.delete('/api/products/:productId', async (req, res) => {
+
+
+router.delete('/api/products/:productId', async (req: Request & { user?: Token }, res: Response) => {
   try {
     const productId = req.params.productId;
-    const product = await Product.findByPk(productId);
+    const product = await Product.findByPk(productId, {
+      include: [{
+        model: Bid,
+        as: 'bids'
+      }]
+    });
+    
     if (product) {
+      if (product.sellerId !== req.user?.id && !req.user?.admin) {
+        return res.status(401).json({ error: 'User not granted' });
+      }
+      for (const bid of product.bids) {
+        await bid.destroy();
+      }
       await product.destroy();
       res.status(204).send();
     } else {

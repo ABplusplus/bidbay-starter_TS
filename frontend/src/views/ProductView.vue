@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import { useAuthStore } from "../store/auth";
+import { c } from "vite/dist/node/types.d-FdqQ54oU";
 
 const { isAuthenticated, isAdmin, userData, token } = useAuthStore();
 
@@ -60,6 +61,52 @@ const isBidValid = computed(() => {
   
 });
 
+
+async function deleteBid(bidId) {
+  console.log('deleteBid was called');
+  const response = await fetch(`http://localhost:3000/api/bids/${bidId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token.value}`,
+    },
+  });
+  if (response.ok) {
+    // The bid was successfully deleted
+    // Reload the product
+    await fetchProduct();
+  } else {
+    // There was an error
+    // Handle the error
+  }
+}
+
+async function deleteProduct() {
+  const confirmation = window.confirm('Are you sure you want to delete this product?');
+  if (confirmation) {
+    try {
+      console.log('deleteProduct was called');
+      console.log(productId.value);
+      const response = await fetch(`http://localhost:3000/api/products/${productId.value}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token.value}`,
+        },
+      });
+      if (response.ok) {
+        // The product was successfully deleted
+        // Redirect to another page
+        router.push('/');
+      } else {
+        // There was an error
+        // Handle the error
+      }
+    } catch (error) {
+      // There was an error
+      // Handle the error
+      console.log(error);
+    }
+  }
+}
 async function submitBid() {
   console.log('submitBid was called'); 
 
@@ -146,8 +193,9 @@ onMounted(fetchProduct);
             &nbsp;
             <button class="btn btn-danger" data-test-delete-product
             v-if="isAdmin || (isAuthenticated && product?.seller.id === userData.id)"
-
-            >
+            @click="deleteProduct">
+            
+            
               Supprimer
               
             </button>
@@ -199,6 +247,7 @@ onMounted(fetchProduct);
               <td>
                 <button class="btn btn-danger btn-sm" data-test-delete-bid
                 v-if="isAdmin"
+                @click="deleteBid(bid.id)"
                 >
                   Supprimer
                 </button>
