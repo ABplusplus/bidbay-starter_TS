@@ -68,75 +68,110 @@ router.get('/api/products/:productId', async (req, res) => {
   }
 });
 
-router.post('/api/products', async (req, res) => {
+router.post('/api/products', authMiddleware, async (req : Request & {user? : Token}, res) => {
+  const { name, description, pictureUrl, category, originalPrice, endDate } = req.body;
+
+  if (!name || !endDate || typeof originalPrice !== 'number') {
+    return res.status(400).json({
+      error: "Invalid or missing fields",
+      details: ["Required fields: name, endDate, originalPrice"]
+    });
+  }
+
   try {
-    const { name, description, category, originalPrice, pictureUrl, endDate, sellerId } = req.body;
+    const sellerId = req.user?.id; 
+
     const product = await Product.create({
       name,
       description,
+      pictureUrl,
       category,
       originalPrice,
-      pictureUrl,
       endDate,
-      sellerId,
+      sellerId
     });
+
     res.status(201).json(product);
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error(error); 
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.put('/api/products/:productId', async (req, res) => {
+router.delete('/api/products/:productId', authMiddleware, async (req : Request & {user? : Token}, res) => {
+  const { productId } = req.params;
+  const userId = req.user?.id; 
+  const isAdmin = req.user?.admin; 
+
   try {
-    const productId = req.params.productId;
-    const { name, description, category, originalPrice, pictureUrl, endDate, sellerId } = req.body;
     const product = await Product.findByPk(productId);
-    if (product) {
-      await product.update({
-        name,
-        description,
-        category,
-        originalPrice,
-        pictureUrl,
-        endDate,
-        sellerId,
-      });
-      res.status(200).json(product);
-    } else {
-      res.status(404).json({ error: 'Product not found' });
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
     }
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-
-
-router.delete('/api/products/:productId', async (req: Request & { user?: Token }, res: Response) => {
-  try {
-    const productId = req.params.productId;
-    const product = await Product.findByPk(productId, {
-      include: [{
-        model: Bid,
-        as: 'bids'
-      }]
-    });
     
-    if (product) {
-      if (product.sellerId !== req.user?.id && !req.user?.admin) {
-        return res.status(401).json({ error: 'User not granted' });
-      }
-      for (const bid of product.bids) {
-        await bid.destroy();
-      }
-      await product.destroy();
-      res.status(204).send();
-    } else {
-      res.status(404).json({ error: 'Product not found' });
+    if (product.sellerId !== userId && !isAdmin) {
+      return res.status(403).json({ error: "User not granted" });
     }
+
+    console.log(product)
+    
+    
+    await Bid.destroy({ where: { productId } });
+    await product.destroy();
+
+    res.status(204).send();
+    
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    
+    console.error(error); 
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+
+router.put('/api/products/:productId', authMiddleware, async (req : Request & {user? : Token}, res) => {
+  const { productId } = req.params;
+  const userId = req.user?.id; 
+  const isAdmin = req.user?.admin; 
+  const { name, description, pictureUrl, category, originalPrice, endDate } = req.body;
+
+  if (!name || !endDate) {
+    return res.status(400).json({
+      error: "Invalid or missing fields",
+      details: ["name", "endDate"]
+    });
+  }
+
+  try {
+    const product = await Product.findByPk(productId);
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    if (product.sellerId !== userId && !isAdmin) {
+      return res.status(403).json({ error: "User not granted" });
+    }
+
+    await product.update({
+      name,
+      description,
+      pictureUrl,
+      category,
+      originalPrice,
+      endDate
+    });
+
+    res.status(200).json(product);
+  } catch (error) {
+    console.error(error); // Pour le débogage
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
+
+
 
 export default router

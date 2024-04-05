@@ -8,35 +8,33 @@ const router = express.Router();
 
 router.post('/api/products/:productId/bids', authMiddleware, async (req : Request & {user? : Token}, res) => {
   const { productId } = req.params;
-  const { amount } = req.body;
-  const currentUserId = req.user?.id;
-  
+  const { price } = req.body;
+  const bidderId = req.user?.id; 
+
+  if (typeof price !== 'number' || price <= 0) {
+    return res.status(400).json({
+      error: "Invalid or missing fields",
+      details: ["price"]
+    });
+  }
+
   try {
     const product = await Product.findByPk(productId);
-  
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      return res.status(404).json({ error: "Product not found" });
     }
-  
-    if (product.sellerId === currentUserId) {
-      return res.status(403).json({ error: 'Forbidden: You cannot bid on your own product' });
-    }
-  
-    const currentPrice = product.bids.length > 0 ? product.bids[0].price : product.originalPrice;
-  
-    if (amount <= currentPrice) {
-      return res.status(400).json({ error: 'Bad request', details: 'Bid amount must be greater than current price' });
-    }
-  
-    const newBid = await Bid.create({
-      amount,
-      bidderId: currentUserId,
+
+    const bid = await Bid.create({
       productId,
+      price,
+      bidderId,
+      date: new Date().toISOString(), 
     });
-  
-    res.status(201).json(newBid);
+
+    res.status(201).json(bid);
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    console.error(error); 
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
