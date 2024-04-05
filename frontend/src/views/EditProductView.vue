@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { ref, onMounted } from "vue";
 import { useAuthStore } from "../store/auth";
 import { useRoute, useRouter } from "vue-router";
-import { ref } from "vue";
 
 const { isAuthenticated, token } = useAuthStore();
 const router = useRouter();
@@ -12,6 +12,48 @@ if (!isAuthenticated.value) {
 }
 
 const productId = ref(route.params.productId);
+const productName = ref("");
+const productDescription = ref("");
+const productCategory = ref("");
+const originalPrice = ref("");
+const pictureUrl = ref("");
+const endDate = ref("");
+const error = ref(null);
+const isSubmitting = ref(false);
+
+onMounted(async () => {
+  try {
+    // Make API call to fetch product details
+    // Assume the API response is stored in a variable called response
+    productName.value = response.data.name;
+    productDescription.value = response.data.description;
+    productCategory.value = response.data.category;
+    originalPrice.value = response.data.originalPrice;
+    pictureUrl.value = response.data.pictureUrl;
+    endDate.value = response.data.endDate;
+  } catch (err) {
+    error.value = "Une erreur s'est produite";
+  }
+}); // This is the correct place for the closing brace
+
+const editProduct = async () => {
+  if (!productName.value || !productDescription.value || !originalPrice.value || !pictureUrl.value || !endDate.value) {
+    error.value = "Une erreur s'est produite";
+    return;
+  }
+
+  isSubmitting.value = true;
+
+  try {
+    // Make API call to update product
+    // Reset the error
+    error.value = null;
+  } catch (err) {
+    error.value = "Une erreur s'est produite";
+  } finally {
+    isSubmitting.value = false;
+  }
+};
 </script>
 
 <template>
@@ -19,9 +61,9 @@ const productId = ref(route.params.productId);
 
   <div class="row justify-content-center">
     <div class="col-md-6">
-      <form>
-        <div class="alert alert-danger mt-4" role="alert" data-test-error>
-          Une erreur est survenue
+      <form @submit.prevent="editProduct">
+        <div v-if="error" class="alert alert-danger mt-4" role="alert" data-test-error>
+          {{ error }}
         </div>
 
         <div class="mb-3">
@@ -111,11 +153,12 @@ const productId = ref(route.params.productId);
           <button
             type="submit"
             class="btn btn-primary"
-            disabled
+            :disabled="isSubmitting"
             data-test-submit
           >
             Modifier le produit
             <span
+              v-if="isSubmitting"
               class="spinner-border spinner-border-sm"
               role="status"
               aria-hidden="true"
