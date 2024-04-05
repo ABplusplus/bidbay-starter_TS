@@ -70,5 +70,6 @@ router.delete('/api/bids/:bidId',authMiddleware, async (req : Request & {user? :
     }
   });
   
+  
 
 export default router
