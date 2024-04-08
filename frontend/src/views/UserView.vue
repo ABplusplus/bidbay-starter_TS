@@ -7,7 +7,10 @@ export default {
       status: '',
       products: [],
       bids: [],
-
+      isAuthenticated: null,
+      isAdmin: null,
+      userData: null,
+      token: null,
       sellerId : undefined,
       username: undefined,
       email: undefined,
@@ -16,7 +19,14 @@ export default {
     };
   },
   async mounted() {
-    this.sellerId = this.$route.params.userId;
+    const authStore = useAuthStore();
+    this.isAuthenticated = authStore.isAuthenticated;
+    this.isAdmin = authStore.isAdmin;
+    this.userData = authStore.userData;
+    this.token = authStore.token;
+    this.sellerId = this.$route.path === '/users/me' ? this.userData.id : this.$route.params.userId;
+
+  console.log("selerId");
     console.log(this.sellerId);
     await this.fetchData();
   },
@@ -37,28 +47,33 @@ export default {
       return new Date(date).toLocaleDateString("fr-FR", options);
     },
     async fetchData() {
-      this.status = 'loading';
+  this.status = 'loading'; 
+  
+  try {
+    
+    const response = await fetch(`http://localhost:3000/api/users/${this.sellerId}`);
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    const data= await response.json();
+    this.userPage = data;
+    this.products = data.products;
+    this.bids = data.bids;
+    this.username = data.username;
+    this.email = data.email;
+    this.id = data.id;
+    this.admin = data.admin;
+    this.status = 'success';
+    
+    
+    
+    
+  } catch (e) {
+    this.status = 'error';
+    console.error(e);
+  }
+},
 
-      try {
-        const response = await fetch(`http://localhost:3000/api/users/${this.sellerId}`);
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        this.userPage = data.user;
-        this.products = data.products;
-        this.bids = data.bids;
-        this.status = 'success';
-        this.username = data.username;
-        this.email = data.email;
-        this.id = data.id;
-        this.admin = data.admin;
-        
-      } catch (e) {
-        this.status = 'error';
-        console.log(e);
-      }
-    },
     
     async deleteBid(bidId) {
       console.log('deleteBid was called');
