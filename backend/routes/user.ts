@@ -11,6 +11,10 @@ router.get('/api/users/:userId', async (req, res) => {
       include: [{
         model: Product,
         as: 'products', 
+        include: [{
+          model: Bid,
+          as: 'bids'
+        }]
       }, {
         model: Bid,
         as: 'bids',
@@ -37,7 +41,13 @@ router.get('/api/users/:userId', async (req, res) => {
         category: product.category,
         originalPrice: product.originalPrice,
         pictureUrl: product.pictureUrl,
-        endDate: product.endDate
+        endDate: product.endDate,
+        bids: product.bids.map(bid => ({
+          id: bid.id,
+          price: bid.price,
+          date: bid.date,
+        
+        }))
       })),
       bids: user.bids.map(bid => ({
         id: bid.id,
@@ -45,7 +55,9 @@ router.get('/api/users/:userId', async (req, res) => {
         date: bid.date,
         product: {
           id: bid.product.id,
-          name: bid.product.name
+          name: bid.product.name,
+          endDate : bid.product.endDate,
+          
         }
       }))
     };

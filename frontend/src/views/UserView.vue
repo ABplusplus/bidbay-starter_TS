@@ -1,55 +1,118 @@
-<script setup lang="ts">
-import { ref, computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
-
+<script>
 import { useAuthStore } from "../store/auth";
 
-const { isAuthenticated, userData } = useAuthStore();
+export default {
+  data() {
+    return {
+      status: '',
+      products: [],
+      bids: [],
 
-const router = useRouter();
-const route = useRoute();
+      sellerId : undefined,
+      username: undefined,
+      email: undefined,
+      admin: false,
+      
+    };
+  },
+  async mounted() {
+    this.sellerId = this.$route.params.userId;
+    console.log(this.sellerId);
+    await this.fetchData();
+  },
 
-const user = ref(null);
-const loading = ref(false);
-const error = ref(null);
+  
+  methods: {
+    getLastBid(product) {
+      console.log('getLastBid was called');
+      console.log(product);
+  if (product.bids && product.bids.length > 0) {
+    const sortedBids = product.bids.sort((a, b) => b.price - a.price);
+    return sortedBids[0].price;
+  }
+  return product.originalPrice; 
+},
+    formatDate(date) {
+      const options = { year: "numeric", month: "long", day: "numeric" };
+      return new Date(date).toLocaleDateString("fr-FR", options);
+    },
+    async fetchData() {
+      this.status = 'loading';
 
-let userId = computed(() => route.params.userId);
-
-const formatDate = (date: Date) => {
-  return new Date(date).toLocaleDateString();
-};
+      try {
+        const response = await fetch(`http://localhost:3000/api/users/${this.sellerId}`);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        this.userPage = data.user;
+        this.products = data.products;
+        this.bids = data.bids;
+        this.status = 'success';
+        this.username = data.username;
+        this.email = data.email;
+        this.id = data.id;
+        this.admin = data.admin;
+        
+      } catch (e) {
+        this.status = 'error';
+        console.log(e);
+      }
+    },
+    
+    async deleteBid(bidId) {
+      console.log('deleteBid was called');
+      const response = await fetch(`http://localhost:3000/api/bids/${bidId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+        },
+      });
+      if (response.ok) {
+        console.log('deleteBid successful');
+        await this.fetchProduct();
+      } else {
+        console.log('deleteBid failed');
+      }
+    },
+   
+ 
+  
+}}
 </script>
+
+
 
 <template>
   <div>
     <h1 class="text-center" data-test-username>
-      Utilisateur charly
-      <span class="badge rounded-pill bg-primary" data-test-admin>Admin</span>
+      Utilisateur {{ this.username || "Chargement" }}
+      <span class="badge rounded-pill bg-primary" data-test-admin v-if = "this.admin">Admin</span>
     </h1>
-    <div class="text-center" data-test-loading>
+    <div class="text-center" data-test-loading v-if="status == 'loading'">
       <span class="spinner-border"></span>
       <span>Chargement en cours...</span>
     </div>
-    <div class="alert alert-danger mt-3" data-test-error>
+    <div class="alert alert-danger mt-3" data-test-error v-else-if="status == 'error'">
       Une erreur est survenue
     </div>
-    <div data-test-view>
-      <div class="row">
+    <div data-test-view v-else>
+      <div class="row" >
         <div class="col-lg-6">
           <h2>Produits</h2>
           <div class="row">
             <div
               class="col-md-6 mb-6 py-2"
-              v-for="i in 10"
-              :key="i"
+              v-for="product in products"
+              :key="product.id"
               data-test-product
             >
               <div class="card">
                 <RouterLink
-                  :to="{ name: 'Product', params: { productId: 'TODO' } }"
-                >
+                  :to="{ name: 'Product', params: {productId: product.id} }">
+                
                   <img
-                    src="https://image.noelshack.com/fichiers/2023/12/4/1679526253-65535-51925549650-96f088a093-b-512-512-nofilter.jpg"
+                    :src = "product.pictureUrl  || 'https://via.placeholder.com/300'"
                     class="card-img-top"
                     data-test-product-picture
                   />
@@ -59,21 +122,19 @@ const formatDate = (date: Date) => {
                     <RouterLink
                       :to="{
                         name: 'Product',
-                        params: { productId: 'TODO' },
+                        params: { productId: product.id },
                       }"
                       data-test-product-name
                     >
-                      Chapeau en poil de chameau
+                      {{product.name}}
                     </RouterLink>
                   </h5>
                   <p class="card-text" data-test-product-description>
-                    Ce chapeau en poil de chameau est un véritable chef-d'œuvre
-                    artisanal, doux au toucher et résistant pour une durabilité
-                    à long terme.
+                    {{product.description}}
                   </p>
                   <p class="card-text" data-test-product-price>
-                    Prix de départ : 23 €
-                  </p>
+                  {{ product.bids?.length === 0 ? 'Prix de départ ' + product.originalPrice + ' €' : 'Prix actuel ' + getLastBid(product) + ' €' }}
+                </p>
                 </div>
               </div>
             </div>
@@ -90,20 +151,20 @@ const formatDate = (date: Date) => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="i in 10" :key="i" data-test-bid>
+              <tr v-for="bid in this.bids" :key="bid.id" data-test-bid>
                 <td>
                   <RouterLink
                     :to="{
                       name: 'Product',
-                      params: { productId: 'TODO' },
+                      params: { productId: bid.product.id },
                     }"
                     data-test-bid-product
                   >
-                    Théière design
+                    {{bid.product.name}}
                   </RouterLink>
                 </td>
-                <td data-test-bid-price>713 €</td>
-                <td data-test-bid-date>{{ formatDate(new Date()) }}</td>
+                <td data-test-bid-price>{{bid.price + ' €'}}</td>
+                <td data-test-bid-date>{{ formatDate(bid.date) }}</td>
               </tr>
             </tbody>
           </table>
