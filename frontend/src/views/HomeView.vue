@@ -17,9 +17,9 @@ export default {
     setSortKey(key) {
   this.sortKey = key;
   this.products.sort((a, b) => {
-    if (this.sortKey === 'name') {
+    if (this.sortKey === 'nom') {
       return a.name.localeCompare(b.name);
-    } else if (this.sortKey === 'price') {
+    } else if (this.sortKey === 'prix') {
       const lastBidA = this.getLastBid(a);
       const lastBidB = this.getLastBid(b);
 
@@ -47,6 +47,8 @@ export default {
 },
 
     fetchProducts() {
+      this.error = false;
+      this.loading = true;
       fetch('http://localhost:3000/api/products')
         .then(response => {
           if (!response.ok) {
@@ -59,17 +61,29 @@ export default {
             this.products = JSON.parse(data);
           }
           this.loading = false;
+          this.setSortKey('nom');
+
+
         })
         .catch(error => {
+          error = true;
+          this.loading = false;
           console.error(error);
           this.loading = false;
           this.error = true;
         });
     },
     filterProducts() {
-      return this.products.filter(product => {
-        return product.name.toLowerCase().includes(this.filterValue.toLowerCase());
-      });
+      try {
+        return this.products.filter(product => {
+          return product.name.toLowerCase().includes(this.filterValue.toLowerCase());
+        });
+      } catch (error) {
+        error = true;
+        console.error(error);
+        return [];
+      }
+      
     }
   }
 };
@@ -108,11 +122,11 @@ export default {
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li>
-              <a class="dropdown-item" href="#" @click.prevent="setSortKey('name')"> Nom </a>
+              <a class="dropdown-item" href="#" @click.prevent="setSortKey('nom')" > nom </a>
             </li>
             <li>
-              <a class="dropdown-item" href="#" @click.prevent="setSortKey('price')" data-test-sorter-price>
-                Prix
+              <a class="dropdown-item" href="#" @click.prevent="setSortKey('prix')" data-test-sorter-price>
+                prix
               </a>
             </li>
           </ul>
@@ -120,13 +134,13 @@ export default {
       </div>
     </div>
 
-    <div class="text-center mt-4" data-test-loading>
+    <div class="text-center mt-4" data-test-loading v-if="loading">
       <div class="spinner-border" role="status">
         <span class="visually-hidden">Chargement...</span>
       </div>
     </div>
 
-    <div class="alert alert-danger mt-4" role="alert" data-test-error>
+    <div class="alert alert-danger mt-4" role="alert" data-test-error v-if="error">
       Une erreur est survenue lors du chargement des produits.
     </div>
     <div class="row">
@@ -163,12 +177,11 @@ export default {
               </RouterLink>
             </p>
             <p class="card-text" data-test-product-date>
-              {{ new Date(product.endDate) > new Date() ? 'Fin de l\'enchère le ' + formatDateHourMinute(product.endDate) : 'Enchère terminée'}}
+              {{ new Date(product.endDate) > new Date() ? 'En cours jusqu\'au' + formatDateHourMinute(product.endDate) : 'Terminé'}}
             </p>
 
-            <p class="card-text" data-test-product-price>Prix de Base : {{ product.originalPrice }} €</p>
             <p class="card-text" data-test-product-price>
-              {{ product.bids.length === 0 ? 'Commencer l\'enchère à ' + product.originalPrice + ' €' : 'Dernière enchère :' + getLastBid(product) + ' €' }}
+              {{ product.bids.length === 0 ? 'Prix de départ ' + product.originalPrice + ' €' : 'Prix actuel ' + getLastBid(product) + ' €' }}
             </p>
 
           </div>
