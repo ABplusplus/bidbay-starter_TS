@@ -26,6 +26,23 @@ onMounted(async () => {
     // Make API call to fetch product details
     // Assume the API response is stored in a variable called response
     productName.value = response.data.name;
+  
+  } catch (err) {
+    error.value = "Une erreur s'est produite";
+  }
+}); 
+
+// Pseudo-code for fetching product details
+onMounted(async () => {
+  try {
+    const response = await fetch(`your-api-endpoint/products/${productId.value}`, {
+      headers: {
+        Authorization: `Bearer ${token.value}`,
+      },
+    });
+    if (!response.ok) throw new Error('Failed to fetch product details');
+    const data = await response.json();
+    productName.value = data.name;
     productDescription.value = response.data.description;
     productCategory.value = response.data.category;
     originalPrice.value = response.data.originalPrice;
@@ -34,7 +51,10 @@ onMounted(async () => {
   } catch (err) {
     error.value = "Une erreur s'est produite";
   }
-}); // This is the correct place for the closing brace
+});
+
+
+
 
 const editProduct = async () => {
   if (!productName.value || !productDescription.value || !originalPrice.value || !pictureUrl.value || !endDate.value) {

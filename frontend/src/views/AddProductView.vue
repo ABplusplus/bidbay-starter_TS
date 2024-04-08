@@ -1,62 +1,86 @@
-<script>
-import { ref } from "vue";
-import { useAuthStore } from "@/store/auth";
-import { useRouter } from "vue-router";
+ 
+<script setup lang="ts">
+import { ref } from 'vue';
+import { useAuthStore } from '@/store/auth';
+import { useRouter } from 'vue-router';
+import { post } from './product';
 
-export default {
-  setup() {
-    const { isAuthenticated, token } = useAuthStore();
-    const router = useRouter();
-    const productName = ref("");
-    const productDescription = ref("");
-    const productCategory = ref("");
-    const originalPrice = ref("");
-    const pictureUrl = ref("");
-    const endDate = ref("");
-    const error = ref(null);
 
-    if (!isAuthenticated.value) {
-      router.push({ name: "Login" });
-    }
+const { isAuthenticated, token } = useAuthStore();
+const router = useRouter();
 
-    const isSubmitting = ref(false);
 
-    const addProduct = async () => {
-      if (!productName.value || !productDescription.value || !originalPrice.value || !pictureUrl.value || !endDate.value) {
-        error.value = "All fields are required";
-        return;
-      }
+const productName = ref('');
+const productDescription = ref('');
+const productCategory = ref('');
+const originalPrice = ref('');
+const pictureUrl = ref('');
+const endDate = ref('');
 
-      isSubmitting.value = true;
 
-      try {
-        // Make API call to add product
-        // Reset the form and error
-        productName.value = "";
-        productDescription.value = "";
-        originalPrice.value = "";
-        pictureUrl.value = "";
-        endDate.value = "";
-        error.value = null;
-      } catch (err) {
-        error.value = "Une erreur s'est produite";
-      } finally {
-        isSubmitting.value = false;
-      }
-    };
+async function AddProduct() {
+  if (!productName.value || !productDescription.value || !productCategory.value || !originalPrice.value || !pictureUrl.value || !endDate.value) {
+    return;
+  }
 
-    return { productName, productDescription, originalPrice, pictureUrl, endDate, error, addProduct, isSubmitting };
+  try {
+    await post({
+      name: productName.value,
+      description: productDescription.value,
+      category: productCategory.value,
+      originalPrice: originalPrice.value,
+      pictureUrl: pictureUrl.value,
+      endDate: endDate.value,
+    });
+    router.push({ name: 'Home' });
+  } catch (err) {
+    console.error(err);
+  }
+}
 
-  },
+const post = async () => {
+  if (!productName.value || !productDescription.value || !originalPrice.value || !pictureUrl.value || !endDate.value|| !productCategory.value) {
+    error.value = "Une erreur s'est produite";
+    return;
+  }
+
+
+const isSubmitting = ref(false);
+
+const error = ref(null);
+
+
+if (!isAuthenticated.value) {
+  router.push({ name: 'Login' });
+}
+
+
+
+  const submitProduct = async () => {
+  try {
+    await post({
+      name: productName.value,
+      description: productDescription.value,
+      category: productCategory.value,
+      originalPrice: originalPrice.value,
+      pictureUrl: pictureUrl.value,
+      endDate: endDate.value,
+    });
+  } catch (err) {
+    error.value = "Une erreur s'est produite";
+  }
+};
+
 };
 </script>
+
 
 <template>
   <h1 class="text-center">Ajouter un produit</h1>
 
   <div class="row justify-content-center">
     <div class="col-md-6">
-      <form @submit.prevent="addProduct">
+      <form @submit.prevent="post" method="post">
         <div v-if="error" class="alert alert-danger mt-4" role="alert" data-test-error>
           {{ error }}
         </div>
@@ -78,12 +102,12 @@ export default {
             Description
           </label>
           <textarea
-            v-model="productDescription"
             class="form-control"
             id="product-description"
             name="description"
             rows="3"
             required
+            data-test-product-description
           ></textarea>
         </div>
 
@@ -162,7 +186,6 @@ export default {
               data-test-spinner
               class="spinner-border spinner-border-sm"
               role="status"
-              aria-hidden="true"
             ></span>
           </button>
         </div>
@@ -170,3 +193,4 @@ export default {
     </div>
   </div>
 </template> 
+

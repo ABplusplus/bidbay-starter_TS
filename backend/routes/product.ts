@@ -6,12 +6,7 @@ import { userInfo } from 'os'
 import { Token } from '../types/types'; // Typage pour les données utilisateur dans le token
 import { response } from 'express'
 
-
-
-
 const router = express.Router()
-
-
 
 router.get('/api/products', async (req, res) => {
   try {
